@@ -5,6 +5,7 @@ import (
 	"github.com/nsf/termbox-go"
 	"io"
 	"io/ioutil"
+	"regexp"
 	"strings"
 )
 
@@ -68,7 +69,6 @@ func (e *Engine) moveCursorToEnd() {
 	e.queryCursorIdx = e.query.Length()
 }
 
-
 func (e *Engine) scrollToBelow() {
 	e.contentOffset++
 }
@@ -87,13 +87,19 @@ func (e *Engine) scrollToTop() {
 	e.contentOffset = 0
 }
 
-
 func (e *Engine) getContents() []string {
 	filter := e.query.StringGet()
 	if filter == "" {
 		return e.input
 	}
-	return e.input
+	var ret []string
+	for _, s := range e.input {
+		match, _ := regexp.MatchString(filter, s)
+		if match {
+			ret = append(ret, s)
+		}
+	}
+	return ret
 }
 
 func (e *Engine) Run() []string {
@@ -127,7 +133,7 @@ mainloop:
 		switch ev := termbox.PollEvent(); ev.Type {
 		case termbox.EventKey:
 			switch ev.Key {
-			case 0:
+			case 0, termbox.KeySpace:
 				e.inputChar(ev.Ch)
 			case termbox.KeyBackspace, termbox.KeyBackspace2:
 				e.deleteChar()
