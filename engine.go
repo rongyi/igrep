@@ -1,7 +1,11 @@
 package igrep
 
 import (
+	"fmt"
 	"github.com/nsf/termbox-go"
+	"io"
+	"io/ioutil"
+	"strings"
 )
 
 const (
@@ -14,14 +18,20 @@ type Engine struct {
 	query          *Query
 	term           *Terminal
 	contentOffset  int
+	input          []string
 }
 
-func NewEngine() (*Engine, error) {
+func NewEngine(s io.Reader) (*Engine, error) {
+	buf, err := ioutil.ReadAll(s)
+	if err != nil {
+		return nil, err
+	}
 	e := &Engine{
 		queryCursorIdx: 0,
 		query:          NewQuery([]rune("")),
 		term:           NewTerminal(FilterPrompt, DefaultY),
 		contentOffset:  0,
+		input:          strings.Split(string(buf), "\n"),
 	}
 	e.queryCursorIdx = e.query.Length()
 
@@ -58,7 +68,35 @@ func (e *Engine) moveCursorToEnd() {
 	e.queryCursorIdx = e.query.Length()
 }
 
-func (e *Engine) Run() int {
+
+func (e *Engine) scrollToBelow() {
+	e.contentOffset++
+}
+
+func (e *Engine) scrollToAbove() {
+	if o := e.contentOffset - 1; o >= 0 {
+		e.contentOffset = o
+	}
+}
+
+func (e *Engine) scrollToBottom(rownum int) {
+	e.contentOffset = rownum - 1
+}
+
+func (e *Engine) scrollToTop() {
+	e.contentOffset = 0
+}
+
+
+func (e *Engine) getContents() []string {
+	filter := e.query.StringGet()
+	if filter == "" {
+		return e.input
+	}
+	return e.input
+}
+
+func (e *Engine) Run() []string {
 	err := termbox.Init()
 
 	if err != nil {
@@ -66,12 +104,19 @@ func (e *Engine) Run() int {
 	}
 	defer termbox.Close()
 
+	var contents []string
 mainloop:
 	for {
+		bl := len(contents)
+		contents = e.getContents()
+		if bl != len(contents) {
+			e.contentOffset = 0
+		}
+
 		ta := &TerminalAttributes{
 			Query:           e.query.StringGet(),
 			CursorOffset:    e.query.IndexOffset(e.queryCursorIdx),
-			Contents:        []string{"hello1", "hello2"},
+			Contents:        contents,
 			ContentsOffsetY: e.contentOffset,
 		}
 		err = e.term.Draw(ta)
@@ -94,12 +139,29 @@ mainloop:
 				e.moveCursorToTop()
 			case termbox.KeyEnd, termbox.KeyCtrlE:
 				e.moveCursorToEnd()
+			case termbox.KeyCtrlK:
+				e.scrollToAbove()
+			case termbox.KeyCtrlJ:
+				e.scrollToBelow()
+			case termbox.KeyCtrlG:
+				e.scrollToBottom(len(contents))
+			case termbox.KeyCtrlT:
+				e.scrollToTop()
 			case termbox.KeyCtrlC:
 				break mainloop
 			}
 		case termbox.EventError:
 			break mainloop
 		}
+	}
+
+	return contents
+}
+
+func (e *Engine) RunWithOutput() int {
+	filterOutput := e.Run()
+	if len(filterOutput) > 0 {
+		fmt.Println(strings.Join(filterOutput, "\n"))
 	}
 
 	return 0

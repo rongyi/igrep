@@ -7,11 +7,11 @@ import (
 )
 
 func main() {
-	e, err := igrep.NewEngine()
+	e, err := igrep.NewEngine(os.Stdin)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}
 
-	os.Exit(e.Run())
+	os.Exit(e.RunWithOutput())
 }
