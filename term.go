@@ -12,9 +12,10 @@ type Terminal struct {
 }
 
 type TerminalAttributes struct {
-	Query        string
-	Contents     []string
-	CursorOffset int
+	Query           string
+	Contents        []string
+	CursorOffset    int
+	ContentsOffsetY int
 }
 
 func NewTerminal(prompt string, defaultY int) *Terminal {
@@ -29,13 +30,25 @@ func NewTerminal(prompt string, defaultY int) *Terminal {
 
 func (t *Terminal) Draw(attr *TerminalAttributes) error {
 	query := attr.Query
-	// rows := attr.Contents
+	rows := attr.Contents
+	contentOffsetY := attr.ContentsOffsetY
 
 	termbox.Clear(termbox.ColorDefault, termbox.ColorDefault)
 
-	// y := t.defaultY
+	y := t.defaultY
 
 	t.drawFilterLine(query)
+
+	cellsArr, err := t.rowsToCells(rows)
+	if err != nil {
+		return err
+	}
+
+	for idx, cells := range cellsArr {
+		if i := idx - contentOffsetY; i >= 0 {
+			t.drawCells(0, i+y, cells)
+		}
+	}
 
 	termbox.SetCursor(len(t.prompt)+attr.CursorOffset, 0)
 
@@ -77,4 +90,24 @@ func (t *Terminal) drawCells(x int, y int, cells []termbox.Cell) {
 
 		i += w
 	}
+}
+
+func (t *Terminal) rowsToCells(rows []string) ([][]termbox.Cell, error) {
+	*t.outputArea = [][]termbox.Cell{[]termbox.Cell{}}
+	cells := *t.outputArea
+
+	cells = [][]termbox.Cell{}
+	for _, row := range rows {
+		var cls []termbox.Cell
+		for _, char := range row {
+			cls = append(cls, termbox.Cell{
+				Ch: char,
+				Fg: termbox.ColorDefault,
+				Bg: termbox.ColorDefault,
+			})
+		}
+		cells = append(cells, cls)
+	}
+
+	return cells, nil
 }

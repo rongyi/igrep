@@ -13,6 +13,7 @@ type Engine struct {
 	queryCursorIdx int
 	query          *Query
 	term           *Terminal
+	contentOffset  int
 }
 
 func NewEngine() (*Engine, error) {
@@ -20,6 +21,7 @@ func NewEngine() (*Engine, error) {
 		queryCursorIdx: 0,
 		query:          NewQuery([]rune("")),
 		term:           NewTerminal(FilterPrompt, DefaultY),
+		contentOffset:  0,
 	}
 	e.queryCursorIdx = e.query.Length()
 
@@ -67,8 +69,10 @@ func (e *Engine) Run() int {
 mainloop:
 	for {
 		ta := &TerminalAttributes{
-			Query:        e.query.StringGet(),
-			CursorOffset: e.query.IndexOffset(e.queryCursorIdx),
+			Query:           e.query.StringGet(),
+			CursorOffset:    e.query.IndexOffset(e.queryCursorIdx),
+			Contents:        []string{"hello1", "hello2"},
+			ContentsOffsetY: e.contentOffset,
 		}
 		err = e.term.Draw(ta)
 		if err != nil {
