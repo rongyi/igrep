@@ -27,12 +27,20 @@ func NewEngine(s io.Reader) (*Engine, error) {
 	if err != nil {
 		return nil, err
 	}
+	flows := strings.Split(string(buf), "\n")
+	var fflow []string
+	for _, f := range flows {
+		match := FlowBeforeAction(f)
+		action := FlowAction(f)
+		newFlow := FlowDropStats(match) + " " + ActionLearnClean(ActionARPClean(action))
+		fflow = append(fflow, newFlow)
+	}
 	e := &Engine{
 		queryCursorIdx: 0,
 		query:          NewQuery([]rune("")),
 		term:           NewTerminal(FilterPrompt, DefaultY),
 		contentOffset:  0,
-		input:          strings.Split(string(buf), "\n"),
+		input:          fflow,
 	}
 	e.queryCursorIdx = e.query.Length()
 
@@ -153,7 +161,7 @@ mainloop:
 				e.scrollToBottom(len(contents))
 			case termbox.KeyCtrlT:
 				e.scrollToTop()
-			case termbox.KeyCtrlC:
+			case termbox.KeyCtrlC, termbox.KeyEnter:
 				break mainloop
 			}
 		case termbox.EventError:
