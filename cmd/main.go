@@ -1,7 +1,7 @@
 package main
 
 import (
-	"igrep"
+	"github.com/rongyi/igrep"
 	"fmt"
 	"os"
 )
